@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>我的 ☁️ 时光日记</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        :root { --ios-blue: #007AFF; --ios-bg: #F2F2F7; --ios-card: #FFFFFF; --ios-gray: #8E8E93; --ios-green: #34C759; --ios-red: #FF3B30; }
+        body { font-family: -apple-system, sans-serif; background: var(--ios-bg); margin: 0; color: #000; -webkit-tap-highlight-color: transparent; }
+        
+        .view { display: none; padding-top: env(safe-area-inset-top); min-height: 100vh; }
+        .view.active { display: block; animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .clickable { transition: transform 0.1s; cursor: pointer; }
+        .clickable:active { transform: scale(0.96); opacity: 0.7; }
+
+        .navbar { position: sticky; top: 0; background: rgba(255,255,255,0.85); backdrop-filter: blur(15px); display: flex; justify-content: center; align-items: center; height: 50px; border-bottom: 0.5px solid #C6C6C8; z-index: 100; }
+        .nav-title { font-size: 17px; font-weight: 600; }
+
+        .progress-card { background: var(--ios-card); margin: 16px; border-radius: 14px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .progress-bar-bg { background: #E9E9EB; height: 6px; border-radius: 3px; overflow: hidden; margin-top: 8px; }
+        .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #007AFF, #5AC8FA); width: 0%; transition: width 1s; }
+
+        .history-card { background: linear-gradient(135deg, #5b86e5, #36d1dc); color: white; margin: 0 16px 16px; border-radius: 14px; padding: 15px; font-size: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); min-height: 60px; }
+
+        .card { background: var(--ios-card); margin: 0 16px 16px; border-radius: 14px; padding: 16px; }
+        .cal-header { font-size: 18px; font-weight: bold; color: var(--ios-blue); display: flex; align-items: center; margin-bottom: 15px; }
+        .cal-header::after { content: ' ▾'; font-size: 12px; margin-left: 4px; opacity: 0.4; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; text-align: center; }
+        .cal-day { font-size: 16px; height: 38px; display: flex; align-items: center; justify-content: center; position: relative; z-index: 1; }
+        
+        /* 核心标注逻辑样式 */
+        .cal-day.today::before { content: ''; position: absolute; width: 34px; height: 34px; border: 2px solid var(--ios-green); border-radius: 48% 52% 55% 45% / 42% 58% 51% 49%; transform: rotate(-2deg); z-index: -1; }
+        .cal-day.has-note::after { content: ''; position: absolute; bottom: 2px; width: 4px; height: 4px; background: var(--ios-blue); border-radius: 50%; }
+        .cal-day.missed::before { content: ''; position: absolute; width: 30px; height: 30px; border: 1.5px dashed var(--ios-red); border-radius: 50%; opacity: 0.4; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.5; } }
+
+        .edit-group { background:#FFF; margin:16px; border-radius:14px; overflow:hidden; }
+        .edit-item { padding:14px 16px; border-bottom:0.5px solid #EEE; display:flex; align-items:center; }
+        .edit-item input { border:none; font-size:16px; outline:none; width:100%; background:transparent; -webkit-appearance:none; }
+        
+        .action-bar { display: flex; margin: 0 16px 16px; gap: 12px; }
+        .action-btn { flex: 1; background: var(--ios-card); padding: 12px; border-radius: 12px; border: none; color: var(--ios-blue); font-size: 16px; font-weight: 500; }
+        
+        textarea { width: 100%; min-height: 400px; padding: 16px; border: none; font-size: 16px; line-height: 1.6; resize: none; box-sizing: border-box; outline: none; background: transparent; }
+        #import-input { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="view-main" class="view active">
+        <div class="navbar"><div class="nav-title">我的 ☁️ 时光日记</div></div>
+        <div class="progress-card">
+            <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--ios-gray);"><span>2026年进度</span><span id="p-percent">0%</span></div>
+            <div class="progress-bar-bg"><div id="p-fill" class="progress-bar-fill"></div></div>
+        </div>
+        <div class="history-card clickable" onclick="nextHistory()">
+            <h5 style="margin:0; font-size:10px; opacity:0.8;">维基百科：历史上的今天</h5>
+            <div id="history-text" style="margin-top:4px; line-height:1.4;">正在连接维基百科...</div>
+        </div>
+        <div class="card">
+            <div class="cal-header clickable" id="cal-display" onclick="toggleMonthPicker()">加载中...</div>
+            <div id="cal-view-grid"><div class="cal-grid" id="cal-body"></div></div>
+            <div id="cal-view-months" style="display:none"><div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px;" id="month-grid"></div></div>
+        </div>
+        <div class="action-bar">
+            <button class="action-btn clickable" style="background:#FFF" onclick="switchView('view-summary')">📊 总结同步</button>
+            <button class="action-btn clickable" style="background:#FFF" onclick="openEditor()">✍️ 记录</button>
+        </div>
+        <div class="search-container" style="background: #E3E3E8; margin: 0 16px 12px; border-radius: 10px; padding: 8px 12px; display: flex; align-items: center;">
+            <span>🔍</span><input type="text" id="q" placeholder="搜索记忆..." oninput="renderList()" style="border: none; background: transparent; width: 100%; font-size: 16px; outline: none; margin-left: 8px;">
+        </div>
+        <div id="list-body" style="background:#FFF; margin:0 16px 20px; border-radius:14px; overflow:hidden;"></div>
+    </div>
+
+    <div id="view-edit" class="view" ontouchstart="handleTouchStart(event)" ontouchend="handleTouchEnd(event)">
+        <div class="navbar">
+            <button class="clickable" style="position:absolute; left:16px; color:var(--ios-blue); border:none; background:none; font-size:17px;" onclick="switchView('view-main')">返回</button>
+            <div class="nav-title">编辑</div>
+            <button class="clickable" style="position:absolute; right:16px; color:var(--ios-blue); border:none; background:none; font-size:17px; font-weight:bold" onclick="save()">完成</button>
+        </div>
+        <div class="edit-group">
+            <div class="edit-item"><input type="date" id="f-date" onchange="loadDateRecord(this.value)"></div>
+            <div class="edit-item">
+                <input type="text" id="f-loc" placeholder="📍 获取位置即可显示市/区" style="flex:1">
+                <span class="clickable" onclick="getLocOnly()" style="font-size:12px; color:var(--ios-blue); margin-left:8px;">获取定位</span>
+            </div>
+        </div>
+        <textarea id="f-content" placeholder="记录这一刻...（左右滑动翻页，清空内容保存可取消日历蓝点）"></textarea>
+    </div>
+
+    <div id="view-summary" class="view">
+        <div class="navbar">
+            <button class="clickable" style="position:absolute; left:16px; color:var(--ios-blue); border:none; background:none; font-size:17px;" onclick="switchView('view-main')">返回</button>
+            <div class="nav-title">总结与同步</div>
+        </div>
+        <div id="summary-menu" style="padding:16px">
+            <button class="action-btn clickable" style="display:block; width:100%; margin-bottom:12px; background:#FFF" onclick="makeReport(7)">📅 本周总结</button>
+            <button class="action-btn clickable" style="display:block; width:100%; margin-bottom:12px; background:#FFF" onclick="makeReport(30)">🌙 月度总结</button>
+            <button class="action-btn clickable" style="display:block; width:100%; margin-bottom:24px; background:#FFF" onclick="makeReport(365)">🌟 年度总结</button>
+            <div style="display:flex; gap:10px;">
+                <button class="action-btn clickable" style="flex:1; background:#E9E9EB; color:#333;" onclick="exportData()">备份存档</button>
+                <button class="action-btn clickable" style="flex:1; background:#E9E9EB; color:#333;" onclick="document.getElementById('import-input').click()">增量导入</button>
+            </div>
+            <input type="file" id="import-input" accept=".json" onchange="importData(event)">
+        </div>
+        <div id="report-wrap" class="card" style="display:none; padding:20px;">
+            <button class="action-btn clickable" id="btn-copy-prompt" style="width:100%; background:#000; color:#FFF; border:none; margin-bottom:20px;">✨ 复制让 Gemini 总结</button>
+            <div id="report-out" style="line-height:1.6; font-size:14px; color:#444;"></div>
+            <button class="action-btn clickable" id="btn-pdf-export" style="width:100%; margin-top:20px; color:var(--ios-gray)">导出为 PDF</button>
+        </div>
+    </div>
+
+    <script>
+        const DB_KEY = 'cnote_v32_final';
+        let db = JSON.parse(localStorage.getItem(DB_KEY) || '[]');
+        let curMonth = new Date(), historyEvents = [], historyIndex = 0, touchStartX = 0;
+        let currentPrompt = "";
+
+        window.onload = () => { renderCal(); renderList(); updateYearProgress(); fetchWikiHistory(); };
+
+        function haptic() { if (window.navigator.vibrate) window.navigator.vibrate(10); }
+
+        // --- 维基百科 API (带连接保护) ---
+        async function fetchWikiHistory() {
+            const controller = new AbortController();
+            setTimeout(() => controller.abort(), 5000);
+            try {
+                const res = await fetch(`https://zh.wikipedia.org/api/rest_v1/feed/onthisday/events/${new Date().getMonth()+1}/${new Date().getDate()}`, { signal: controller.signal });
+                const data = await res.json();
+                historyEvents = data.events; showHistory();
+            } catch (e) { document.getElementById('history-text').innerText = "人类的历史长河静静流淌"; }
+        }
+        function showHistory() { 
+            if(historyEvents && historyEvents.length) {
+                const ev = historyEvents[historyIndex];
+                document.getElementById('history-text').innerText = `${ev.year}年：${ev.text}`;
+            }
+        }
+        function nextHistory() { haptic(); if(historyEvents.length){ historyIndex = (historyIndex + 1) % historyEvents.length; showHistory(); } }
+
+        // --- 日历逻辑：删除内容蓝点即消失 ---
+        function getDateStatus(dateStr) {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const entry = db.find(n => n.date === dateStr);
+            // 严谨判断：只有存在记录且内容非空时才有蓝点
+            const hasContent = entry && entry.con && entry.con.trim().length > 0;
+            
+            let status = "";
+            if (dateStr === todayStr) status += " today";
+            if (hasContent) status += " has-note";
+            
+            // 红圈逻辑：仅针对过去且非本周的日期
+            const target = new Date(dateStr); target.setHours(0,0,0,0);
+            const now = new Date(); now.setHours(0,0,0,0);
+            if (!hasContent && target < now) {
+                const monday = new Date(now); 
+                monday.setDate(now.getDate() - ((now.getDay() || 7) - 1));
+                if (target < monday && target >= new Date('2026-04-13')) status += " missed";
+            }
+            return status;
+        }
+
+        function renderCal() {
+            const body = document.getElementById('cal-body'); body.innerHTML = '';
+            const y = curMonth.getFullYear(), m = curMonth.getMonth();
+            document.getElementById('cal-display').innerText = `${y}年${m+1}月`;
+            const first = new Date(y, m, 1).getDay(), days = new Date(y, m+1, 0).getDate();
+            for(let i=0; i<first; i++) body.innerHTML += '<div></div>';
+            for(let d=1; d<=days; d++) {
+                const s = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                body.innerHTML += `<div class="cal-day clickable ${getDateStatus(s)}" onclick="goDate('${s}')">${d}</div>`;
+            }
+        }
+
+        // --- 保存逻辑：物理删除检查 ---
+        function save() {
+            haptic();
+            const date = document.getElementById('f-date').value;
+            const loc = document.getElementById('f-loc').value;
+            const con = document.getElementById('f-content').value;
+            
+            db = db.filter(x => x.date !== date); // 移除旧记录
+            if(con && con.trim().length > 0) {
+                db.push({ date, loc, con }); // 内容有效才存入
+            }
+            localStorage.setItem(DB_KEY, JSON.stringify(db));
+            switchView('view-main'); renderCal(); renderList();
+        }
+
+        // --- 总结功能：全局点击监听保障 ---
+        function makeReport(days) {
+            haptic();
+            const cutoff = Date.now() - (days * 86400000);
+            const items = db.filter(x => new Date(x.date).getTime() >= cutoff).sort((a,b) => a.date.localeCompare(b.date));
+            if(!items.length) return alert("选定周期内无记录。");
+
+            document.getElementById('summary-menu').style.display = 'none';
+            document.getElementById('report-wrap').style.display = 'block';
+            
+            let rawStr = ""; let htmlOut = "";
+            items.forEach(x => {
+                rawStr += `${x.date} [${x.loc}]: ${x.con}\n\n`;
+                htmlOut += `<div style="margin-bottom:15px; border-bottom:1px solid #EEE; padding-bottom:8px;"><b>${x.date}</b><br>${x.con}</div>`;
+            });
+            document.getElementById('report-out').innerHTML = htmlOut;
+            currentPrompt = `请作为我的生命教练，深度分析我过去${days}天的日记，提炼情绪、成长和核心事件，生成一份人性化的总结：\n\n${rawStr}`;
+        }
+
+        document.addEventListener('click', function(e) {
+            // 复制逻辑
+            if(e.target && e.target.id === 'btn-copy-prompt') {
+                haptic();
+                const textArea = document.createElement("textarea");
+                textArea.value = currentPrompt;
+                document.body.appendChild(textArea); textArea.select();
+                try {
+                    document.execCommand('copy');
+                    alert("总结提示词已复制！请前往 Gemini 粘贴。");
+                } catch(err) { alert("复制失败，请手动选择复制"); }
+                document.body.removeChild(textArea);
+            }
+            // PDF 逻辑
+            if(e.target && e.target.id === 'btn-pdf-export') {
+                haptic();
+                const element = document.getElementById('report-out');
+                if(!element.innerText) return alert("暂无内容");
+                html2pdf().from(element).set({
+                    margin: 0.5,
+                    filename: '时光总结报告.pdf',
+                    html2canvas: { scale: 2 },
+                    jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+                }).save();
+            }
+        });
+
+        // --- 定位逻辑：仅显示市/区 ---
+        async function getLocOnly() {
+            haptic();
+            document.getElementById('f-loc').value = "定位中...";
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json&accept-language=zh-cn`);
+                    const data = await res.json();
+                    const addr = data.address;
+                    document.getElementById('f-loc').value = (addr.city || addr.town || addr.province || "") + (addr.suburb || addr.district || "");
+                } catch(e) { document.getElementById('f-loc').value = "解析失败"; }
+            }, () => { document.getElementById('f-loc').value = "无法获取权限"; });
+        }
+
+        // --- 基础渲染辅助 ---
+        function switchView(id) { haptic(); document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+        function openEditor() { goDate(new Date().toISOString().split('T')[0]); }
+        function goDate(s) { haptic(); loadDateRecord(s); switchView('view-edit'); }
+        function loadDateRecord(s) { const n = db.find(x => x.date === s); document.getElementById('f-date').value = s; document.getElementById('f-loc').value = n?n.loc:''; document.getElementById('f-content').value = n?n.con:''; }
+        function updateYearProgress() { const now = new Date(), start = new Date(now.getFullYear(), 0, 1), end = new Date(now.getFullYear()+1, 0, 1); const p = (((now - start) / (end - start)) * 100).toFixed(1); document.getElementById('p-fill').style.width = p + '%'; document.getElementById('p-percent').innerText = p + '%'; }
+        function renderList() { const k = document.getElementById('q').value.toLowerCase(); const list = db.filter(x => x.con.toLowerCase().includes(k)).sort((a,b)=>b.date.localeCompare(a.date)); document.getElementById('list-body').innerHTML = list.map(x => `<div class="list-item clickable" style="padding:15px; border-bottom:0.5px solid #EEE;" onclick="goDate('${x.date}')"><b>${x.date}</b><div style="font-size:14px; color:var(--ios-gray);">${x.con.substring(0,30)}...</div></div>`).join(''); }
+        function handleTouchStart(e) { touchStartX = e.changedTouches[0].screenX; }
+        function handleTouchEnd(e) { let diff = e.changedTouches[0].screenX - touchStartX; if(Math.abs(diff)>120) { let d = new Date(document.getElementById('f-date').value); d.setDate(d.getDate() + (diff>0?-1:1)); loadDateRecord(d.toISOString().split('T')[0]); haptic(); } }
+        function toggleMonthPicker() { haptic(); isMonthPicker = !isMonthPicker; document.getElementById('cal-view-grid').style.display = isMonthPicker?'none':'block'; document.getElementById('cal-view-months').style.display = isMonthPicker?'block':'none'; if(isMonthPicker) { const grid = document.getElementById('month-grid'); grid.innerHTML = ''; for(let i=0; i<12; i++){ const it = document.createElement('div'); it.className='action-btn clickable'; it.style.background = (i===curMonth.getMonth())?'var(--ios-blue)':'#FFF'; it.style.color = (i===curMonth.getMonth())?'white':'var(--ios-blue)'; it.innerText = `${i+1}月`; it.onclick = () => { curMonth.setMonth(i); toggleMonthPicker(); }; grid.appendChild(it); } } else renderCal(); }
+        function exportData() { const b = new Blob([JSON.stringify(db,null,2)], {type:"application/json"}); const u = URL.createObjectURL(b); const a = document.createElement("a"); a.href=u; a.download=`DiaryBackup_${new Date().toISOString().split('T')[0]}.json`; a.click(); }
+        function importData(e) { const r = new FileReader(); r.onload = (ev) => { const imp = JSON.parse(ev.target.result); imp.forEach(n => { const idx = db.findIndex(o => o.date === n.date); if(idx>-1){ if(!db[idx].con.includes(n.con)) db[idx].con += "\n\n[同步合并]:\n"+n.con; } else db.push(n); }); localStorage.setItem(DB_KEY, JSON.stringify(db)); renderCal(); renderList(); alert("导入同步完成"); }; r.readAsText(e.target.files[0]); }
+    </script>
+</body>
+</html>

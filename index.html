@@ -5,14 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>☁️Cloudiary</title>
     
+    <link rel="icon" href="https://raw.githubusercontent.com/yinyindong/img/main/cat-icon.png">
     <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/yinyindong/img/main/cat-icon.png">
-    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         :root { --ios-blue: #007AFF; --ios-bg: #F2F2F7; --ios-card: #FFFFFF; --ios-gray: #8E8E93; --ios-green: #34C759; --ios-red: #FF3B30; }
-        body { font-family: -apple-system, sans-serif; background: var(--ios-bg); margin: 0; color: #000; -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--ios-bg); margin: 0; color: #000; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
         
-        .view { display: none; padding-top: env(safe-area-inset-top); min-height: 100vh; }
+        .view { display: none; padding-top: env(safe-area-inset-top); min-height: 100vh; width: 100%; box-sizing: border-box; }
         .view.active { display: block; animation: fadeIn 0.2s ease-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
@@ -28,49 +31,69 @@
 
         .history-card { background: linear-gradient(135deg, #5b86e5, #36d1dc); color: white; margin: 0 16px 16px; border-radius: 14px; padding: 15px; font-size: 14px; min-height: 60px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
 
-        .card { background: var(--ios-card); margin: 0 16px 16px; border-radius: 14px; padding: 16px; }
-        .cal-header { font-size: 18px; font-weight: bold; color: var(--ios-blue); display: flex; align-items: center; margin-bottom: 15px; }
+        .card { background: var(--ios-card); margin: 0 16px 16px; border-radius: 14px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+        .cal-header { font-size: 18px; font-weight: bold; color: var(--ios-blue); display: flex; align-items: center; margin-bottom: 12px; }
         .cal-header::after { content: ' ▾'; font-size: 12px; margin-left: 4px; opacity: 0.4; }
+        
+        .weekday-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; text-align: center; font-size: 12px; color: var(--ios-gray); margin-bottom: 10px; font-weight: 600; }
         .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; text-align: center; }
         .cal-day { font-size: 16px; height: 38px; display: flex; align-items: center; justify-content: center; position: relative; z-index: 1; }
         
-        .cal-day.today::before { content: ''; position: absolute; width: 34px; height: 34px; border: 2px solid var(--ios-green); border-radius: 48% 52% 55% 45% / 42% 58% 51% 49%; transform: rotate(-2deg); z-index: -1; }
+        .cal-day.today::before { content: ''; position: absolute; width: 34px; height: 34px; border: 2px solid var(--ios-green); border-radius: 48% 52% 55% 45% / 42% 58% 51% 49%; z-index: -1; }
         .cal-day.has-note::after { content: ''; position: absolute; bottom: 2px; width: 4px; height: 4px; background: var(--ios-blue); border-radius: 50%; }
         .cal-day.missed::before { content: ''; position: absolute; width: 30px; height: 30px; border: 1.5px dashed var(--ios-red); border-radius: 50%; opacity: 0.4; }
 
         .action-bar { display: flex; margin: 0 16px 16px; gap: 12px; }
-        .action-btn { flex: 1; background: var(--ios-card); padding: 12px; border-radius: 12px; border: none; color: var(--ios-blue); font-size: 16px; font-weight: 500; }
+        .action-btn { flex: 1; background: var(--ios-card); padding: 12px; border-radius: 12px; border: none; color: var(--ios-blue); font-size: 16px; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
         
-        textarea { width: 100%; min-height: 400px; padding: 16px; border: none; font-size: 16px; line-height: 1.6; outline: none; background: transparent; }
-        #import-input { display: none; }
+        /* 深度优化的卡片式日记 */
+        .diary-card { background: var(--ios-card); margin: 16px; border-radius: 16px; box-shadow: 0 6px 24px rgba(0,0,0,0.08); display: flex; flex-direction: column; overflow: hidden; min-height: 70vh; }
+        .diary-meta { padding: 16px; border-bottom: 0.5px solid #F2F2F7; background: #FAFAFC; }
+        #f-date { border: none; font-size: 18px; font-weight: 600; background: transparent; outline: none; appearance: none; -webkit-appearance: none; padding: 0; box-shadow: none !important; color: #000; width: 100%; }
+        #f-date::-webkit-date-and-time-value { text-align: left; }
+        #f-loc { border: none; font-size: 14px; color: var(--ios-gray); background: transparent; outline: none; width: 75%; }
+        
+        textarea { flex: 1; width: 100%; padding: 20px 16px; border: none; font-size: 17px; line-height: 1.7; outline: none; background: transparent; resize: none; box-sizing: border-box; }
         
         .search-bar { background: #E3E3E8; margin: 0 16px 12px; border-radius: 10px; padding: 8px 12px; display: flex; align-items: center; }
         .search-bar input { border: none; background: transparent; width: 100%; font-size: 16px; outline: none; margin-left: 8px; }
+        
+        #list-body { background: #FFF; margin: 0 16px 20px; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+        .list-item { padding: 15px; border-bottom: 0.5px solid #EEE; }
+        .list-item:last-child { border-bottom: none; }
     </style>
 </head>
 <body>
 
     <div id="view-main" class="view active">
-        <div class="navbar"><div class="nav-title">我的 ☁️ 时光日记</div></div>
+        <div class="navbar"><div class="nav-title">时光日记</div></div>
+        
         <div class="progress-card">
-            <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--ios-gray);"><span>2026年进度</span><span id="p-percent">0%</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--ios-gray);"><span id="year-label">2026年进度</span><span id="p-percent">0%</span></div>
             <div class="progress-bar-bg"><div id="p-fill" class="progress-bar-fill"></div></div>
         </div>
+        
         <div class="history-card clickable" onclick="nextHistory()">
-            <h5 style="margin:0; font-size:10px; opacity:0.8;">维基百科：历史上的今天</h5>
-            <div id="history-text" style="margin-top:4px; line-height:1.4;">史册同步中...</div>
+            <h5 style="margin:0; font-size:10px; opacity:0.8; font-weight:normal;">维基百科：历史上的今天</h5>
+            <div id="history-text" style="margin-top:6px; line-height:1.4; font-weight:500;">史册同步中...</div>
         </div>
+        
         <div class="card">
             <div class="cal-header clickable" id="cal-display" onclick="toggleMonthPicker()">加载中...</div>
+            <div class="weekday-header">
+                <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
+            </div>
             <div id="cal-view-grid"><div class="cal-grid" id="cal-body"></div></div>
             <div id="cal-view-months" style="display:none"><div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px;" id="month-grid"></div></div>
         </div>
+        
         <div class="action-bar">
-            <button class="action-btn clickable" style="background:#FFF" onclick="enterSummaryView()">📊 总结同步</button>
-            <button class="action-btn clickable" style="background:#FFF" onclick="openEditor()">✍️ 记录当下</button>
+            <button class="action-btn clickable" onclick="enterSummaryView()">📊 总结同步</button>
+            <button class="action-btn clickable" onclick="openEditor()">✍️ 记录当下</button>
         </div>
+        
         <div class="search-bar"><span>🔍</span><input type="text" id="q" placeholder="搜索记忆..." oninput="renderList()"></div>
-        <div id="list-body" style="background:#FFF; margin:0 16px 20px; border-radius:14px; overflow:hidden;"></div>
+        <div id="list-body"></div>
     </div>
 
     <div id="view-edit" class="view" ontouchstart="handleTouchStart(event)" ontouchend="handleTouchEnd(event)">
@@ -79,20 +102,23 @@
             <div class="nav-title">编辑</div>
             <button class="clickable" style="position:absolute; right:16px; color:var(--ios-blue); border:none; background:none; font-size:17px; font-weight:bold" onclick="save()">完成</button>
         </div>
-        <div style="background:#FFF; margin:16px; border-radius:14px; overflow:hidden;">
-            <div style="padding:14px 16px; border-bottom:0.5px solid #EEE;"><input type="date" id="f-date" style="border:none; font-size:16px; width:100%" onchange="loadDateRecord(this.value)"></div>
-            <div style="padding:14px 16px; display:flex; align-items:center;">
-                <input type="text" id="f-loc" placeholder="📍 地点..." style="border:none; font-size:16px; flex:1">
-                <span class="clickable" onclick="getLoc()" style="font-size:12px; color:var(--ios-blue); margin-left:8px;">获取定位</span>
+        
+        <div class="diary-card">
+            <div class="diary-meta">
+                <input type="date" id="f-date" onchange="loadDateRecord(this.value)">
+                <div style="display:flex; align-items:center; margin-top:10px;">
+                    <input type="text" id="f-loc" placeholder="📍 添加地点...">
+                    <span class="clickable" onclick="getLoc()" style="font-size:13px; color:var(--ios-blue); margin-left:auto; font-weight:500;">获取定位</span>
+                </div>
             </div>
+            <textarea id="f-content" placeholder="记录这一刻...&#10;&#10;(在卡片上左右滑动可翻阅前/后一天的日记)"></textarea>
         </div>
-        <textarea id="f-content" placeholder="记录这一刻...（左右滑动翻阅历史）"></textarea>
     </div>
 
     <div id="view-summary" class="view">
         <div class="navbar">
             <button class="clickable" style="position:absolute; left:16px; color:var(--ios-blue); border:none; background:none; font-size:17px;" onclick="switchView('view-main')">返回</button>
-            <div class="nav-title">总结与同步</div>
+            <div class="nav-title">总结与数据</div>
         </div>
         <div id="summary-menu" style="padding:16px">
             <button class="action-btn clickable" style="display:block; width:100%; margin-bottom:12px; background:#FFF" onclick="makeReport(7)">📅 本周总结</button>
@@ -100,32 +126,56 @@
             <button class="action-btn clickable" style="display:block; width:100%; margin-bottom:24px; background:#FFF" onclick="makeReport(365)">🌟 年度总结</button>
             <div style="display:flex; gap:10px;">
                 <button class="action-btn clickable" style="flex:1; background:#E9E9EB; color:#333;" onclick="exportData()">备份存档</button>
-                <button class="action-btn clickable" style="flex:1; background:#E9E9EB; color:#333;" onclick="document.getElementById('import-input').click()">增量导入</button>
+                <button class="action-btn clickable" style="flex:1; background:#E9E9EB; color:#333;" onclick="document.getElementById('import-input').click()">导入恢复</button>
             </div>
-            <input type="file" id="import-input" accept=".json" onchange="importData(event)">
+            <input type="file" id="import-input" accept=".json" onchange="importData(event)" style="display:none;">
         </div>
         <div id="report-wrap" class="card" style="display:none; padding:20px;">
-            <button class="action-btn clickable" id="btn-copy-prompt" style="width:100%; background:#000; color:#FFF; border:none; margin-bottom:20px;">✨ 复制让 Gemini 总结</button>
-            <div id="report-out" style="line-height:1.6; font-size:14px; color:#444; max-height:400px; overflow-y:auto;"></div>
-            <button class="action-btn clickable" id="btn-pdf-export" style="width:100%; margin-top:20px; color:var(--ios-gray)">导出 PDF</button>
-            <button class="clickable" style="display:block; width:100%; margin-top:15px; text-align:center; color:var(--ios-blue); border:none; background:none;" onclick="resetSummaryView()">重新选择范围</button>
+            <button class="action-btn clickable" id="btn-copy-prompt" style="width:100%; background:#000; color:#FFF; border:none; margin-bottom:20px;">✨ 复制 AI 分析指令</button>
+            <div id="report-out" style="line-height:1.6; font-size:15px; color:#333; max-height:50vh; overflow-y:auto; padding-right:5px;"></div>
+            <button class="action-btn clickable" id="btn-pdf-export" style="width:100%; margin-top:20px; color:var(--ios-gray); background:#F2F2F7;">导出长图 (PDF)</button>
+            <button class="clickable" style="display:block; width:100%; margin-top:15px; text-align:center; color:var(--ios-blue); border:none; background:none; font-size:15px;" onclick="resetSummaryView()">返回重新选择</button>
         </div>
     </div>
 
     <script>
-        const DB_KEY = 'cnote_v35_pro';
+        const DB_KEY = 'cnote_v38_ultimate';
         let db = JSON.parse(localStorage.getItem(DB_KEY) || '[]');
         let curMonth = new Date(), historyEvents = [], historyIndex = 0, touchStartX = 0;
         let currentPrompt = "";
 
-        window.onload = () => { renderCal(); renderList(); updateYearProgress(); fetchWikiHistory(); };
+        // 核心修复：完全规避 UTC 带来的时差跳日 Bug，统一使用本地时区格式化
+        const formatLocalDate = (d) => {
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        };
+
+        window.onload = () => { 
+            initAutoRefresh();
+            renderCal(); 
+            renderList(); 
+            updateYearProgress(); 
+            fetchWikiHistory(); 
+        };
+
+        // 跨日自动刷新：精准计算到今晚 24:00:00 的毫秒数
+        function initAutoRefresh() {
+            const now = new Date();
+            const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+            const msToMidnight = tomorrow - now;
+            setTimeout(() => {
+                renderCal();
+                updateYearProgress();
+                initAutoRefresh(); // 递归
+            }, msToMidnight + 500); // 宽限500毫秒确保跨日成功
+        }
 
         async function fetchWikiHistory() {
             try {
-                const res = await fetch(`https://zh.wikipedia.org/api/rest_v1/feed/onthisday/events/${new Date().getMonth()+1}/${new Date().getDate()}`);
+                const now = new Date();
+                const res = await fetch(`https://zh.wikipedia.org/api/rest_v1/feed/onthisday/events/${now.getMonth()+1}/${now.getDate()}`);
                 const data = await res.json();
                 historyEvents = data.events || []; showHistory();
-            } catch (e) { document.getElementById('history-text').innerText = "人类的历史长河静静流淌..."; }
+            } catch (e) { document.getElementById('history-text').innerText = "人类历史长河静静流淌..."; }
         }
         function showHistory() { 
             if(historyEvents.length) {
@@ -136,15 +186,16 @@
         function nextHistory() { historyIndex = (historyIndex + 1) % historyEvents.length; showHistory(); }
 
         function getLoc() {
-            document.getElementById('f-loc').value = "定位中...";
+            const locInput = document.getElementById('f-loc');
+            locInput.value = "定位中...";
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 try {
                     const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json&accept-language=zh-cn`);
                     const data = await res.json();
                     const addr = data.address;
-                    document.getElementById('f-loc').value = (addr.city || addr.town || addr.province || "") + (addr.suburb || addr.district || "");
-                } catch(e) { document.getElementById('f-loc').value = "解析失败"; }
-            }, () => { document.getElementById('f-loc').value = "授权授权失败"; });
+                    locInput.value = (addr.city || addr.town || addr.province || "") + (addr.suburb || addr.district || "");
+                } catch(e) { locInput.value = "解析失败，请重试"; }
+            }, () => { locInput.value = "请在系统设置中允许 Safari 获取位置"; });
         }
 
         function enterSummaryView() { resetSummaryView(); switchView('view-summary'); }
@@ -157,26 +208,32 @@
         function makeReport(days) {
             const cutoff = Date.now() - (days * 86400000);
             const items = db.filter(x => new Date(x.date).getTime() >= cutoff).sort((a,b) => a.date.localeCompare(b.date));
-            if(!items.length) return alert("这段这段期间内无记录。");
+            if(!items.length) return alert("这段期间内没有写日记哦。");
+            
             document.getElementById('summary-menu').style.display = 'none';
             document.getElementById('report-wrap').style.display = 'block';
             let rawStr = ""; let htmlOut = "";
+            
             items.forEach(x => {
                 rawStr += `${x.date}: ${x.con}\n\n`;
-                htmlOut += `<div style="margin-bottom:12px; border-bottom:1px solid #EEE; padding-bottom:8px;"><b>${x.date}</b><br>${x.con}</div>`;
+                htmlOut += `<div style="margin-bottom:16px; border-bottom:0.5px solid #EEE; padding-bottom:12px;">
+                                <strong style="color:var(--ios-blue); font-size:16px;">${x.date}</strong>
+                                <span style="font-size:12px; color:var(--ios-gray); margin-left:8px;">${x.loc || ''}</span>
+                                <div style="margin-top:6px;">${x.con.replace(/\n/g, '<br>')}</div>
+                            </div>`;
             });
             document.getElementById('report-out').innerHTML = htmlOut;
-            currentPrompt = `请深度深度分析我过去${days}天的日记，提炼情绪、成长和核心事件，生成总结：\n\n${rawStr}`;
+            currentPrompt = `请深度分析我过去 ${days} 天的日记，帮我提炼出核心情绪、成长感悟以及主要发生的事件。请用温柔且鼓励的语气回复：\n\n${rawStr}`;
         }
 
         document.addEventListener('click', (e) => {
             if(e.target.id === 'btn-copy-prompt') {
                 const ta = document.createElement("textarea"); ta.value = currentPrompt;
                 document.body.appendChild(ta); ta.select(); document.execCommand('copy');
-                document.body.removeChild(ta); alert("总结 Prompt 已复制");
+                document.body.removeChild(ta); alert("分析指令已复制，快去发给 AI 吧！");
             }
             if(e.target.id === 'btn-pdf-export') {
-                html2pdf().from(document.getElementById('report-out')).set({ margin:0.5, filename:'时光总结.pdf' }).save();
+                html2pdf().from(document.getElementById('report-out')).set({ margin: 1, filename: '时光总结.pdf' }).save();
             }
         });
 
@@ -186,17 +243,21 @@
             db = db.filter(x => x.date !== date);
             if(con.trim()) db.push({ date, loc: document.getElementById('f-loc').value, con });
             localStorage.setItem(DB_KEY, JSON.stringify(db));
-            switchView('view-main'); renderCal(); renderList();
+            switchView('view-main'); 
+            renderCal(); 
+            renderList();
         }
 
         function getDateStatus(dateStr) {
-            const todayStr = new Date().toISOString().split('T')[0];
+            const todayStr = formatLocalDate(new Date());
             const entry = db.find(n => n.date === dateStr);
             const hasContent = entry && entry.con && entry.con.trim();
             let status = "";
             if (dateStr === todayStr) status += " today";
             if (hasContent) status += " has-note";
-            const target = new Date(dateStr); const now = new Date(); now.setHours(0,0,0,0);
+            
+            const target = new Date(dateStr); 
+            const now = new Date(); now.setHours(0,0,0,0);
             if (!hasContent && target < now) {
                 const monday = new Date(now); monday.setDate(now.getDate() - ((now.getDay() || 7) - 1));
                 if (target < monday && target >= new Date('2026-04-13')) status += " missed";
@@ -208,6 +269,7 @@
             const body = document.getElementById('cal-body'); body.innerHTML = '';
             const y = curMonth.getFullYear(), m = curMonth.getMonth();
             document.getElementById('cal-display').innerText = `${y}年${m+1}月`;
+            
             const first = new Date(y, m, 1).getDay(), days = new Date(y, m+1, 0).getDate();
             for(let i=0; i<first; i++) body.innerHTML += '<div></div>';
             for(let d=1; d<=days; d++) {
@@ -216,23 +278,83 @@
             }
         }
 
-        function switchView(id) { document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); document.getElementById(id).classList.add('active'); }
-        function openEditor() { goDate(new Date().toISOString().split('T')[0]); }
+        function switchView(id) { 
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); 
+            document.getElementById(id).classList.add('active'); 
+            window.scrollTo(0,0);
+        }
+        function openEditor() { goDate(formatLocalDate(new Date())); }
         function goDate(s) { loadDateRecord(s); switchView('view-edit'); }
-        function loadDateRecord(s) { const n = db.find(x => x.date === s); document.getElementById('f-date').value = s; document.getElementById('f-loc').value = n?n.loc:''; document.getElementById('f-content').value = n?n.con:''; }
-        function updateYearProgress() { const now = new Date(), start = new Date(now.getFullYear(), 0, 1), end = new Date(now.getFullYear()+1, 0, 1); const p = (((now - start) / (end - start)) * 100).toFixed(1); document.getElementById('p-fill').style.width = p + '%'; document.getElementById('p-percent').innerText = p + '%'; }
+        function loadDateRecord(s) { 
+            const n = db.find(x => x.date === s); 
+            document.getElementById('f-date').value = s; 
+            document.getElementById('f-loc').value = n ? n.loc : ''; 
+            document.getElementById('f-content').value = n ? n.con : ''; 
+        }
+        
+        function updateYearProgress() { 
+            const now = new Date(), start = new Date(now.getFullYear(), 0, 1), end = new Date(now.getFullYear()+1, 0, 1); 
+            const p = (((now - start) / (end - start)) * 100).toFixed(1); 
+            document.getElementById('year-label').innerText = `${now.getFullYear()}年进度`;
+            document.getElementById('p-fill').style.width = p + '%'; 
+            document.getElementById('p-percent').innerText = p + '%'; 
+        }
         
         function renderList() { 
             const k = (document.getElementById('q').value || "").toLowerCase();
             const list = db.filter(x => x.con && x.con.toLowerCase().includes(k)).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10); 
-            document.getElementById('list-body').innerHTML = list.map(x => `<div class="clickable" style="padding:15px; border-bottom:0.5px solid #EEE;" onclick="goDate('${x.date}')"><b>${x.date}</b><div style="font-size:14px; color:var(--ios-gray);">${(x.con || "").substring(0,30)}...</div></div>`).join(''); 
+            document.getElementById('list-body').innerHTML = list.map(x => 
+                `<div class="list-item clickable" onclick="goDate('${x.date}')">
+                    <div style="font-weight:600; margin-bottom:4px;">${x.date} <span style="font-weight:normal; font-size:12px; color:var(--ios-gray); margin-left:6px;">${x.loc || ''}</span></div>
+                    <div style="font-size:14px; color:var(--ios-gray); line-height:1.4;">${(x.con || "").substring(0,40)}...</div>
+                </div>`
+            ).join(''); 
         }
 
-        function toggleMonthPicker() { window.isMonthPicker = !window.isMonthPicker; document.getElementById('cal-view-grid').style.display = window.isMonthPicker?'none':'block'; document.getElementById('cal-view-months').style.display = window.isMonthPicker?'block':'none'; if(window.isMonthPicker) { const grid = document.getElementById('month-grid'); grid.innerHTML = ''; for(let i=0; i<12; i++){ const it = document.createElement('div'); it.className='action-btn clickable'; it.innerText = `${i+1}月`; it.onclick = () => { curMonth.setMonth(i); toggleMonthPicker(); }; grid.appendChild(it); } } else renderCal(); }
-        function exportData() { const b = new Blob([JSON.stringify(db)], {type:"application/json"}); const a = document.createElement("a"); a.href=URL.createObjectURL(b); a.download=`Diary_Backup.json`; a.click(); }
-        function importData(e) { const r = new FileReader(); r.onload = (ev) => { db = JSON.parse(ev.target.result); localStorage.setItem(DB_KEY, JSON.stringify(db)); renderCal(); renderList(); alert("导入导入成功"); }; r.readAsText(e.target.files[0]); }
+        function toggleMonthPicker() { 
+            window.isMonthPicker = !window.isMonthPicker; 
+            document.getElementById('cal-view-grid').style.display = window.isMonthPicker ? 'none' : 'block'; 
+            document.getElementById('cal-view-months').style.display = window.isMonthPicker ? 'block' : 'none'; 
+            if(window.isMonthPicker) { 
+                const grid = document.getElementById('month-grid'); grid.innerHTML = ''; 
+                for(let i=0; i<12; i++){ 
+                    const it = document.createElement('div'); it.className='action-btn clickable'; it.innerText = `${i+1}月`; 
+                    it.onclick = () => { curMonth.setMonth(i); toggleMonthPicker(); }; 
+                    grid.appendChild(it); 
+                } 
+            } else {
+                renderCal(); 
+            }
+        }
+        
+        function exportData() { 
+            const b = new Blob([JSON.stringify(db)], {type:"application/json"}); 
+            const a = document.createElement("a"); 
+            a.href=URL.createObjectURL(b); a.download=`Diary_Backup_${formatLocalDate(new Date())}.json`; a.click(); 
+        }
+        function importData(e) { 
+            const r = new FileReader(); 
+            r.onload = (ev) => { 
+                db = JSON.parse(ev.target.result); 
+                localStorage.setItem(DB_KEY, JSON.stringify(db)); 
+                renderCal(); renderList(); alert("数据导入成功！"); 
+            }; 
+            r.readAsText(e.target.files[0]); 
+        }
+        
+        // 滑动翻页彻底修复为本地时区计算
         function handleTouchStart(e) { touchStartX = e.changedTouches[0].screenX; }
-        function handleTouchEnd(e) { let diff = e.changedTouches[0].screenX - touchStartX; if(Math.abs(diff)>120) { let d = new Date(document.getElementById('f-date').value); d.setDate(d.getDate() + (diff>0?-1:1)); loadDateRecord(d.toISOString().split('T')[0]); } }
+        function handleTouchEnd(e) { 
+            let diff = e.changedTouches[0].screenX - touchStartX; 
+            if(Math.abs(diff) > 120) { 
+                // 防止滑动时键盘弹起干扰
+                document.getElementById('f-content').blur();
+                let parts = document.getElementById('f-date').value.split('-');
+                let d = new Date(parts[0], parts[1] - 1, parts[2]); 
+                d.setDate(d.getDate() + (diff > 0 ? -1 : 1)); 
+                loadDateRecord(formatLocalDate(d)); 
+            } 
+        }
     </script>
 </body>
 </html>

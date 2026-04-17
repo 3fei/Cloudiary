@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>☁️Cloudiary</title>
+    <title>时光日记</title>
     
     <link rel="icon" href="https://raw.githubusercontent.com/yinyindong/img/main/cat-icon.png">
     <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/yinyindong/img/main/cat-icon.png">
@@ -12,70 +12,124 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
-        :root { --ios-blue: #007AFF; --ios-bg: #F2F2F7; --ios-card: #FFFFFF; --ios-gray: #8E8E93; --ios-green: #34C759; --ios-red: #FF3B30; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--ios-bg); margin: 0; color: #000; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
+        /* CSS 变量与深色模式支持 */
+        :root { 
+            --ios-blue: #007AFF; 
+            --ios-green: #34C759; 
+            --ios-red: #FF3B30; 
+            
+            /* 浅色主题变量 */
+            --bg-color: #F2F2F7; 
+            --card-color: #FFFFFF; 
+            --text-main: #000000; 
+            --text-sub: #8E8E93; 
+            --border-color: rgba(60,60,67,0.1); 
+            --nav-bg: rgba(255,255,255,0.7); 
+            --search-bg: #E3E3E8;
+            --shadow-color: rgba(0,0,0,0.04);
+        }
+
+        /* 自动读取 iOS 系统深色模式 */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --ios-blue: #0A84FF; 
+                --ios-green: #30D158; 
+                --ios-red: #FF453A; 
+                
+                /* 深色主题变量 */
+                --bg-color: #000000; 
+                --card-color: #1C1C1E; 
+                --text-main: #FFFFFF; 
+                --text-sub: #EBEBF5; 
+                --border-color: rgba(84,84,88,0.65); 
+                --nav-bg: rgba(28,28,30,0.7); 
+                --search-bg: #2C2C2E;
+                --shadow-color: rgba(0,0,0,0.2);
+            }
+        }
+
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg-color); margin: 0; color: var(--text-main); -webkit-tap-highlight-color: transparent; overflow-x: hidden; transition: background-color 0.3s, color 0.3s; }
         
+        /* 弹性滑动动画 */
         .view { display: none; padding-top: env(safe-area-inset-top); min-height: 100vh; width: 100%; box-sizing: border-box; }
-        .view.active { display: block; animation: fadeIn 0.2s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .view.active { display: block; animation: slideUp 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(15px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
-        .clickable { transition: transform 0.1s; cursor: pointer; }
-        .clickable:active { transform: scale(0.96); opacity: 0.7; }
+        .clickable { transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.15s; cursor: pointer; }
+        .clickable:active { transform: scale(0.95); opacity: 0.6; }
 
-        .navbar { position: sticky; top: 0; background: rgba(255,255,255,0.85); backdrop-filter: blur(15px); display: flex; justify-content: center; align-items: center; height: 50px; border-bottom: 0.5px solid #C6C6C8; z-index: 100; }
+        /* 终极毛玻璃导航栏 */
+        .navbar { position: sticky; top: 0; background: var(--nav-bg); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); display: flex; justify-content: center; align-items: center; height: 50px; border-bottom: 0.5px solid var(--border-color); z-index: 100; }
         .nav-title { font-size: 17px; font-weight: 600; }
 
-        .progress-card { background: var(--ios-card); margin: 16px; border-radius: 14px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        .progress-bar-bg { background: #E9E9EB; height: 6px; border-radius: 3px; overflow: hidden; margin-top: 8px; }
-        .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #007AFF, #5AC8FA); width: 0%; transition: width 1s; }
-
-        .history-card { background: linear-gradient(135deg, #5b86e5, #36d1dc); color: white; margin: 0 16px 16px; border-radius: 14px; padding: 15px; font-size: 14px; min-height: 60px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-
-        .card { background: var(--ios-card); margin: 0 16px 16px; border-radius: 14px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
-        .cal-header { font-size: 18px; font-weight: bold; color: var(--ios-blue); display: flex; align-items: center; margin-bottom: 12px; }
-        .cal-header::after { content: ' ▾'; font-size: 12px; margin-left: 4px; opacity: 0.4; }
+        /* 卡片统一样式 (Inset Grouped) */
+        .card, .progress-card, .history-card, .diary-card, #list-body, #summary-menu { background: var(--card-color); border-radius: 16px; margin: 0 16px 16px; box-shadow: 0 4px 16px var(--shadow-color); border: 0.5px solid var(--border-color); }
         
-        .weekday-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; text-align: center; font-size: 12px; color: var(--ios-gray); margin-bottom: 10px; font-weight: 600; }
+        .progress-card { padding: 16px; margin-top: 16px; }
+        .progress-bar-bg { background: var(--search-bg); height: 6px; border-radius: 3px; overflow: hidden; margin-top: 10px; }
+        .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--ios-blue), #5AC8FA); width: 0%; transition: width 1s cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+        .history-card { background: linear-gradient(135deg, #5b86e5, #36d1dc); color: white; padding: 16px; border: none; }
+
+        .card { padding: 16px; }
+        .cal-header { font-size: 18px; font-weight: bold; color: var(--ios-blue); display: flex; align-items: center; margin-bottom: 14px; }
+        .cal-header::after { content: ' ▾'; font-size: 12px; margin-left: 4px; opacity: 0.6; }
+        
+        .weekday-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; text-align: center; font-size: 12px; color: var(--text-sub); margin-bottom: 10px; font-weight: 600; }
         .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; text-align: center; }
         .cal-day { font-size: 16px; height: 38px; display: flex; align-items: center; justify-content: center; position: relative; z-index: 1; }
         
-        .cal-day.today::before { content: ''; position: absolute; width: 34px; height: 34px; border: 2px solid var(--ios-green); border-radius: 48% 52% 55% 45% / 42% 58% 51% 49%; z-index: -1; }
+        .cal-day.today::before { content: ''; position: absolute; width: 34px; height: 34px; background: var(--ios-blue); border-radius: 50%; z-index: -1; opacity: 0.15; }
+        .cal-day.today { color: var(--ios-blue); font-weight: bold; }
         .cal-day.has-note::after { content: ''; position: absolute; bottom: 2px; width: 4px; height: 4px; background: var(--ios-blue); border-radius: 50%; }
         .cal-day.missed::before { content: ''; position: absolute; width: 30px; height: 30px; border: 1.5px dashed var(--ios-red); border-radius: 50%; opacity: 0.4; }
 
+        /* 按钮与表单 */
         .action-bar { display: flex; margin: 0 16px 16px; gap: 12px; }
-        .action-btn { flex: 1; background: var(--ios-card); padding: 12px; border-radius: 12px; border: none; color: var(--ios-blue); font-size: 16px; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+        .action-btn { flex: 1; background: var(--card-color); padding: 14px; border-radius: 14px; border: 0.5px solid var(--border-color); color: var(--ios-blue); font-size: 16px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 2px 8px var(--shadow-color); }
+        .btn-primary { background: var(--ios-blue); color: #FFF; border: none; }
         
-        /* 深度优化的卡片式日记 */
-        .diary-card { background: var(--ios-card); margin: 16px; border-radius: 16px; box-shadow: 0 6px 24px rgba(0,0,0,0.08); display: flex; flex-direction: column; overflow: hidden; min-height: 70vh; }
-        .diary-meta { padding: 16px; border-bottom: 0.5px solid #F2F2F7; background: #FAFAFC; }
-        #f-date { border: none; font-size: 18px; font-weight: 600; background: transparent; outline: none; appearance: none; -webkit-appearance: none; padding: 0; box-shadow: none !important; color: #000; width: 100%; }
-        #f-date::-webkit-date-and-time-value { text-align: left; }
-        #f-loc { border: none; font-size: 14px; color: var(--ios-gray); background: transparent; outline: none; width: 75%; }
+        .search-bar { background: var(--search-bg); margin: 0 16px 16px; border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; }
+        .search-bar input { border: none; background: transparent; width: 100%; font-size: 16px; outline: none; margin-left: 8px; color: var(--text-main); }
+        .search-bar input::placeholder { color: var(--text-sub); }
         
-        textarea { flex: 1; width: 100%; padding: 20px 16px; border: none; font-size: 17px; line-height: 1.7; outline: none; background: transparent; resize: none; box-sizing: border-box; }
-        
-        .search-bar { background: #E3E3E8; margin: 0 16px 12px; border-radius: 10px; padding: 8px 12px; display: flex; align-items: center; }
-        .search-bar input { border: none; background: transparent; width: 100%; font-size: 16px; outline: none; margin-left: 8px; }
-        
-        #list-body { background: #FFF; margin: 0 16px 20px; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
-        .list-item { padding: 15px; border-bottom: 0.5px solid #EEE; }
+        /* 列表容器 */
+        #list-body { padding: 0; }
+        .list-item { padding: 16px; border-bottom: 0.5px solid var(--border-color); }
         .list-item:last-child { border-bottom: none; }
+        
+        /* 独立卡片编辑器 */
+        .diary-card { margin-top: 16px; min-height: 75vh; display: flex; flex-direction: column; overflow: hidden; }
+        .diary-meta { padding: 18px 20px; border-bottom: 0.5px solid var(--border-color); }
+        #f-date { border: none; font-size: 20px; font-weight: bold; background: transparent; outline: none; -webkit-appearance: none; padding: 0; color: var(--ios-blue); width: 100%; }
+        #f-loc { border: none; font-size: 15px; color: var(--text-sub); background: transparent; outline: none; width: 85%; margin-top: 8px; }
+        #f-loc::placeholder { color: var(--text-sub); opacity: 0.6; }
+        
+        textarea { flex: 1; width: 100%; padding: 20px; border: none; font-size: 17px; line-height: 1.8; letter-spacing: 0.02em; outline: none; background: transparent; resize: none; box-sizing: border-box; color: var(--text-main); }
+        textarea::placeholder { color: var(--text-sub); opacity: 0.5; }
+        
+        /* SVG 图标通用样式 */
+        .svg-icon { stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
     </style>
 </head>
 <body>
 
     <div id="view-main" class="view active">
-        <div class="navbar"><div class="nav-title">☁️Cloudiary</div></div>
+        <div class="navbar"><div class="nav-title">时光日记</div></div>
         
         <div class="progress-card">
-            <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--ios-gray);"><span id="year-label">2026年进度</span><span id="p-percent">0%</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--text-sub); font-weight:500;">
+                <span id="year-label">2026年进度</span><span id="p-percent">0%</span>
+            </div>
             <div class="progress-bar-bg"><div id="p-fill" class="progress-bar-fill"></div></div>
         </div>
         
         <div class="history-card clickable" onclick="nextHistory()">
-            <h5 style="margin:0; font-size:10px; opacity:0.8; font-weight:normal;">维基百科：历史上的今天</h5>
-            <div id="history-text" style="margin-top:6px; line-height:1.4; font-weight:500;">史册同步中...</div>
+            <h5 style="margin:0; font-size:11px; opacity:0.8; font-weight:normal; display:flex; align-items:center; gap:4px;">
+                <svg width="12" height="12" class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                历史上的今天
+            </h5>
+            <div id="history-text" style="margin-top:6px; line-height:1.5; font-weight:500; font-size:15px;">史册同步中...</div>
         </div>
         
         <div class="card">
@@ -88,26 +142,38 @@
         </div>
         
         <div class="action-bar">
-            <button class="action-btn clickable" onclick="enterSummaryView()">📊 总结同步</button>
-            <button class="action-btn clickable" onclick="openEditor()">✍️ 记录当下</button>
+            <button class="action-btn clickable" onclick="enterSummaryView()">
+                <svg width="20" height="20" class="svg-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="8" y2="16"></line><line x1="16" y1="14" x2="16" y2="16"></line></svg>
+                总结同步
+            </button>
+            <button class="action-btn clickable" onclick="openEditor()">
+                <svg width="20" height="20" class="svg-icon" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                记录当下
+            </button>
         </div>
         
-        <div class="search-bar"><span>🔍</span><input type="text" id="q" placeholder="搜索记忆..." oninput="renderList()"></div>
+        <div class="search-bar">
+            <svg width="18" height="18" class="svg-icon" style="color:var(--text-sub);" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="q" placeholder="搜索记忆..." oninput="renderList()">
+        </div>
         <div id="list-body"></div>
     </div>
 
     <div id="view-edit" class="view" ontouchstart="handleTouchStart(event)" ontouchend="handleTouchEnd(event)">
         <div class="navbar">
-            <button class="clickable" style="position:absolute; left:16px; color:var(--ios-blue); border:none; background:none; font-size:17px;" onclick="switchView('view-main')">返回</button>
-            <div class="nav-title">编辑</div>
-            <button class="clickable" style="position:absolute; right:16px; color:var(--ios-blue); border:none; background:none; font-size:17px; font-weight:bold" onclick="save()">完成</button>
+            <button class="clickable" style="position:absolute; left:16px; color:var(--ios-blue); border:none; background:none; font-size:17px; display:flex; align-items:center; gap:4px;" onclick="switchView('view-main')">
+                <svg width="20" height="20" class="svg-icon" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>返回
+            </button>
+            <div class="nav-title">日记编辑</div>
+            <button class="clickable" style="position:absolute; right:16px; color:var(--ios-blue); border:none; background:none; font-size:17px; font-weight:600;" onclick="save()">完成</button>
         </div>
         
         <div class="diary-card">
             <div class="diary-meta">
                 <input type="date" id="f-date" onchange="loadDateRecord(this.value)">
-                <div style="display:flex; align-items:center; margin-top:10px;">
-                    <input type="text" id="f-loc" placeholder="📍 添加地点...">
+                <div style="display:flex; align-items:center; margin-top:8px;">
+                    <svg width="16" height="16" class="svg-icon" style="color:var(--text-sub); margin-right:6px;" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                    <input type="text" id="f-loc" placeholder="添加位置...">
                     <span class="clickable" onclick="getLoc()" style="font-size:13px; color:var(--ios-blue); margin-left:auto; font-weight:500;">获取定位</span>
                 </div>
             </div>
@@ -117,56 +183,48 @@
 
     <div id="view-summary" class="view">
         <div class="navbar">
-            <button class="clickable" style="position:absolute; left:16px; color:var(--ios-blue); border:none; background:none; font-size:17px;" onclick="switchView('view-main')">返回</button>
+            <button class="clickable" style="position:absolute; left:16px; color:var(--ios-blue); border:none; background:none; font-size:17px; display:flex; align-items:center; gap:4px;" onclick="switchView('view-main')">
+                <svg width="20" height="20" class="svg-icon" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>返回
+            </button>
             <div class="nav-title">总结与数据</div>
         </div>
-        <div id="summary-menu" style="padding:16px">
-            <button class="action-btn clickable" style="display:block; width:100%; margin-bottom:12px; background:#FFF" onclick="makeReport(7)">📅 本周总结</button>
-            <button class="action-btn clickable" style="display:block; width:100%; margin-bottom:12px; background:#FFF" onclick="makeReport(30)">🌙 月度总结</button>
-            <button class="action-btn clickable" style="display:block; width:100%; margin-bottom:24px; background:#FFF" onclick="makeReport(365)">🌟 年度总结</button>
-            <div style="display:flex; gap:10px;">
-                <button class="action-btn clickable" style="flex:1; background:#E9E9EB; color:#333;" onclick="exportData()">备份存档</button>
-                <button class="action-btn clickable" style="flex:1; background:#E9E9EB; color:#333;" onclick="document.getElementById('import-input').click()">导入恢复</button>
+        <div id="summary-menu" style="padding:20px; margin-top:16px;">
+            <button class="action-btn clickable" style="width:100%; margin-bottom:14px;" onclick="makeReport(7)">生成本周总结</button>
+            <button class="action-btn clickable" style="width:100%; margin-bottom:14px;" onclick="makeReport(30)">生成月度总结</button>
+            <button class="action-btn clickable" style="width:100%; margin-bottom:24px;" onclick="makeReport(365)">生成年度总结</button>
+            <div style="display:flex; gap:12px;">
+                <button class="action-btn clickable" style="flex:1; color:var(--text-main);" onclick="exportData()">备份数据</button>
+                <button class="action-btn clickable" style="flex:1; color:var(--text-main);" onclick="document.getElementById('import-input').click()">恢复数据</button>
             </div>
             <input type="file" id="import-input" accept=".json" onchange="importData(event)" style="display:none;">
         </div>
-        <div id="report-wrap" class="card" style="display:none; padding:20px;">
-            <button class="action-btn clickable" id="btn-copy-prompt" style="width:100%; background:#000; color:#FFF; border:none; margin-bottom:20px;">✨ 复制 AI 分析指令</button>
-            <div id="report-out" style="line-height:1.6; font-size:15px; color:#333; max-height:50vh; overflow-y:auto; padding-right:5px;"></div>
-            <button class="action-btn clickable" id="btn-pdf-export" style="width:100%; margin-top:20px; color:var(--ios-gray); background:#F2F2F7;">导出长图 (PDF)</button>
-            <button class="clickable" style="display:block; width:100%; margin-top:15px; text-align:center; color:var(--ios-blue); border:none; background:none; font-size:15px;" onclick="resetSummaryView()">返回重新选择</button>
+        
+        <div id="report-wrap" class="card" style="display:none; padding:20px; margin-top:16px;">
+            <button class="action-btn btn-primary clickable" id="btn-copy-prompt" style="width:100%; margin-bottom:20px;">✨ 复制 AI 分析指令</button>
+            <div id="report-out" style="line-height:1.6; font-size:15px; color:var(--text-main); max-height:50vh; overflow-y:auto; padding-right:5px;"></div>
+            <button class="action-btn clickable" id="btn-pdf-export" style="width:100%; margin-top:20px; color:var(--text-sub); border:none;">导出长图 (PDF)</button>
+            <button class="clickable" style="display:block; width:100%; margin-top:20px; text-align:center; color:var(--ios-blue); border:none; background:none; font-size:15px;" onclick="resetSummaryView()">返回重新选择</button>
         </div>
     </div>
 
     <script>
-        const DB_KEY = 'cnote_v38_ultimate';
+        const DB_KEY = 'cnote_v39_pro_visual';
         let db = JSON.parse(localStorage.getItem(DB_KEY) || '[]');
         let curMonth = new Date(), historyEvents = [], historyIndex = 0, touchStartX = 0;
         let currentPrompt = "";
 
-        // 核心修复：完全规避 UTC 带来的时差跳日 Bug，统一使用本地时区格式化
         const formatLocalDate = (d) => {
             return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         };
 
         window.onload = () => { 
-            initAutoRefresh();
-            renderCal(); 
-            renderList(); 
-            updateYearProgress(); 
-            fetchWikiHistory(); 
+            initAutoRefresh(); renderCal(); renderList(); updateYearProgress(); fetchWikiHistory(); 
         };
 
-        // 跨日自动刷新：精准计算到今晚 24:00:00 的毫秒数
         function initAutoRefresh() {
             const now = new Date();
             const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-            const msToMidnight = tomorrow - now;
-            setTimeout(() => {
-                renderCal();
-                updateYearProgress();
-                initAutoRefresh(); // 递归
-            }, msToMidnight + 500); // 宽限500毫秒确保跨日成功
+            setTimeout(() => { renderCal(); updateYearProgress(); initAutoRefresh(); }, (tomorrow - now) + 500);
         }
 
         async function fetchWikiHistory() {
@@ -195,7 +253,7 @@
                     const addr = data.address;
                     locInput.value = (addr.city || addr.town || addr.province || "") + (addr.suburb || addr.district || "");
                 } catch(e) { locInput.value = "解析失败，请重试"; }
-            }, () => { locInput.value = "请在系统设置中允许 Safari 获取位置"; });
+            }, () => { locInput.value = "获取定位失败"; });
         }
 
         function enterSummaryView() { resetSummaryView(); switchView('view-summary'); }
@@ -216,10 +274,10 @@
             
             items.forEach(x => {
                 rawStr += `${x.date}: ${x.con}\n\n`;
-                htmlOut += `<div style="margin-bottom:16px; border-bottom:0.5px solid #EEE; padding-bottom:12px;">
+                htmlOut += `<div style="margin-bottom:16px; border-bottom:0.5px solid var(--border-color); padding-bottom:12px;">
                                 <strong style="color:var(--ios-blue); font-size:16px;">${x.date}</strong>
-                                <span style="font-size:12px; color:var(--ios-gray); margin-left:8px;">${x.loc || ''}</span>
-                                <div style="margin-top:6px;">${x.con.replace(/\n/g, '<br>')}</div>
+                                <span style="font-size:12px; color:var(--text-sub); margin-left:8px;">${x.loc || ''}</span>
+                                <div style="margin-top:8px; line-height:1.6;">${x.con.replace(/\n/g, '<br>')}</div>
                             </div>`;
             });
             document.getElementById('report-out').innerHTML = htmlOut;
@@ -230,7 +288,7 @@
             if(e.target.id === 'btn-copy-prompt') {
                 const ta = document.createElement("textarea"); ta.value = currentPrompt;
                 document.body.appendChild(ta); ta.select(); document.execCommand('copy');
-                document.body.removeChild(ta); alert("分析指令已复制，快去发给 AI 吧！");
+                document.body.removeChild(ta); alert("指令已复制，快去发给 AI 吧！");
             }
             if(e.target.id === 'btn-pdf-export') {
                 html2pdf().from(document.getElementById('report-out')).set({ margin: 1, filename: '时光总结.pdf' }).save();
@@ -243,9 +301,7 @@
             db = db.filter(x => x.date !== date);
             if(con.trim()) db.push({ date, loc: document.getElementById('f-loc').value, con });
             localStorage.setItem(DB_KEY, JSON.stringify(db));
-            switchView('view-main'); 
-            renderCal(); 
-            renderList();
+            switchView('view-main'); renderCal(); renderList();
         }
 
         function getDateStatus(dateStr) {
@@ -305,8 +361,10 @@
             const list = db.filter(x => x.con && x.con.toLowerCase().includes(k)).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10); 
             document.getElementById('list-body').innerHTML = list.map(x => 
                 `<div class="list-item clickable" onclick="goDate('${x.date}')">
-                    <div style="font-weight:600; margin-bottom:4px;">${x.date} <span style="font-weight:normal; font-size:12px; color:var(--ios-gray); margin-left:6px;">${x.loc || ''}</span></div>
-                    <div style="font-size:14px; color:var(--ios-gray); line-height:1.4;">${(x.con || "").substring(0,40)}...</div>
+                    <div style="font-weight:600; margin-bottom:6px; display:flex; align-items:center;">
+                        ${x.date} <span style="font-weight:normal; font-size:12px; color:var(--text-sub); margin-left:8px;">${x.loc || ''}</span>
+                    </div>
+                    <div style="font-size:15px; color:var(--text-sub); line-height:1.5;">${(x.con || "").substring(0,40)}...</div>
                 </div>`
             ).join(''); 
         }
@@ -319,12 +377,11 @@
                 const grid = document.getElementById('month-grid'); grid.innerHTML = ''; 
                 for(let i=0; i<12; i++){ 
                     const it = document.createElement('div'); it.className='action-btn clickable'; it.innerText = `${i+1}月`; 
+                    it.style.color = 'var(--text-main)';
                     it.onclick = () => { curMonth.setMonth(i); toggleMonthPicker(); }; 
                     grid.appendChild(it); 
                 } 
-            } else {
-                renderCal(); 
-            }
+            } else { renderCal(); }
         }
         
         function exportData() { 
@@ -342,17 +399,25 @@
             r.readAsText(e.target.files[0]); 
         }
         
-        // 滑动翻页彻底修复为本地时区计算
         function handleTouchStart(e) { touchStartX = e.changedTouches[0].screenX; }
         function handleTouchEnd(e) { 
             let diff = e.changedTouches[0].screenX - touchStartX; 
-            if(Math.abs(diff) > 120) { 
-                // 防止滑动时键盘弹起干扰
+            if(Math.abs(diff) > 100) { 
                 document.getElementById('f-content').blur();
                 let parts = document.getElementById('f-date').value.split('-');
                 let d = new Date(parts[0], parts[1] - 1, parts[2]); 
                 d.setDate(d.getDate() + (diff > 0 ? -1 : 1)); 
-                loadDateRecord(formatLocalDate(d)); 
+                
+                // 翻页时的微动画反馈
+                const editor = document.querySelector('.diary-card');
+                editor.style.transform = `translateX(${diff > 0 ? '10px' : '-10px'})`;
+                editor.style.opacity = '0.5';
+                setTimeout(() => {
+                    loadDateRecord(formatLocalDate(d)); 
+                    editor.style.transition = 'transform 0.2s, opacity 0.2s';
+                    editor.style.transform = 'translateX(0)';
+                    editor.style.opacity = '1';
+                }, 100);
             } 
         }
     </script>
